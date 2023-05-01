@@ -1,7 +1,0 @@
-config:
-devices:
-  root:
-    path: /
-    pool: salt-pool
-    type: disk
-name: salt-profile
