@@ -102,8 +102,8 @@ for client in "${clients[@]}"; do
    
     # preparing minion conf file
     echo "master: ${IP}.2
-    id: ${vname}">${PWD}/scripts/saltconfig/minion.local.conf
-    
+id: ${vname}">${PWD}/scripts/saltconfig/minion.local.conf
+
     #create salt-minion container
     lxc init ${ker} ${vname} --profile ${SCRIPT_PROFILE_NAME}
     lxc network attach ${SCRIPT_BRIDGE_NAME} ${vname} ${IFACE}
