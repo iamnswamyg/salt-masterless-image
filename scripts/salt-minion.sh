@@ -9,6 +9,4 @@ if ! dpkg-query -W salt-minion >/dev/null 2>&1; then
   sudo sh install_salt.sh -P
 fi
 
-cat /lxd/saltconfig/minion.local.conf
-cp /lxd/saltconfig/minion.local.conf /etc/salt/minion.d/local.conf
-systemctl restart salt-minion
+

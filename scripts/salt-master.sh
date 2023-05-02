@@ -14,8 +14,6 @@ if ! dpkg-query -W salt-master >/dev/null 2>&1; then
   sudo sh install_salt.sh -P -M -N
 fi
 
-cat /lxd/saltconfig/master.local.conf
-cp /lxd/saltconfig/master.local.conf /etc/salt/master.d/local.conf
-systemctl restart salt-master
+
 
 
