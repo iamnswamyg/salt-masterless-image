@@ -11,7 +11,7 @@ if ! dpkg-query -W salt-master >/dev/null 2>&1; then
   curl -L https://bootstrap.saltstack.com -o install_salt.sh
 
   # Install Master
-  sudo sh install_salt.sh -P -M -N
+  sudo sh install_salt.sh -P -M -N stable 3005.1
 fi
 
 
