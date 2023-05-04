@@ -1,6 +1,6 @@
 #!/bin/bash
 
-SCRIPT_PREFIX="salt"
+SCRIPT_PREFIX="salt-mless"
 OS=images:ubuntu/jammy
 OS_FINGERPRINT="39da8bdecb9450521ec97683265fbc51fa1f29c0eabae102e7be78e787788047"
 STORAGE_PATH="/data/lxd/"${SCRIPT_PREFIX}
@@ -10,11 +10,10 @@ IP_SUBNET=${IP}".1/24"
 SALT_MASTER_POOL=${SCRIPT_PREFIX}"-pool"
 SCRIPT_PROFILE_NAME=${SCRIPT_PREFIX}"-profile"
 SCRIPT_BRIDGE_NAME=${SCRIPT_PREFIX}"-br"
-SALT_MINION_NAME=${SCRIPT_PREFIX}"-minion"
 SALT_MASTER_NAME=${SCRIPT_PREFIX}"-master"
 
 IS_MASTER_LOCAL=false
-IS_MINION_LOCAL=false
+
 
 # check if jq exists
 if ! snap list | grep jq >>/dev/null 2>&1; then
@@ -25,7 +24,7 @@ if ! snap list | grep lxd >>/dev/null 2>&1; then
   sudo snap install lxd 
 fi
 
-image_names=("${SALT_MASTER_NAME}" "${SALT_MINION_NAME}")
+image_names=("${SALT_MASTER_NAME}" )
 
 # Loop through the list of items
 for image_name in "${image_names[@]}"
@@ -37,14 +36,11 @@ do
             IS_MASTER_LOCAL=true
             echo "$image_name already exists"
         fi
-        if [ $image_name = ${SALT_MINION_NAME} ]; then
-            IS_MINION_LOCAL=true
-            echo "$image_name already exists"
-        fi
+        
     fi
 done
 
-if ${IS_MASTER_LOCAL} && ${IS_MINION_LOCAL}; then
+if ${IS_MASTER_LOCAL}; then
     echo "Skippping the script "
     exit 0 
 fi
@@ -77,36 +73,21 @@ name: ${SCRIPT_PROFILE_NAME}" | lxc profile edit ${SCRIPT_PROFILE_NAME}
 
 
 
-if ! ${IS_MASTER_LOCAL}; then
-    #create salt-master container
-    lxc init ${OS} ${SALT_MASTER_NAME} --profile ${SCRIPT_PROFILE_NAME}
-    lxc network attach ${SCRIPT_BRIDGE_NAME} ${SALT_MASTER_NAME} ${IFACE}
-    lxc config device set ${SALT_MASTER_NAME} ${IFACE} ipv4.address ${IP}.2
-    lxc start ${SALT_MASTER_NAME} 
-    if lxc image list --format=json | jq -r '.[] | .fingerprint' | grep -q "$OS_FINGERPRINT"; then
-        lxc image alias create ubuntu22.04 "$OS_FINGERPRINT"
-    fi
-    sudo lxc config device add ${SALT_MASTER_NAME} ${SALT_MASTER_NAME}-script-share disk source=${PWD}/scripts path=/lxd
-    sudo lxc exec ${SALT_MASTER_NAME} -- /bin/bash /lxd/${SALT_MASTER_NAME}.sh
-    # save container as image
-    lxc stop ${SALT_MASTER_NAME}
-    lxc publish ${SALT_MASTER_NAME} --alias ${SALT_MASTER_NAME} 
-    lxc delete ${SALT_MASTER_NAME} --force
+#create salt-master container
+lxc init ${OS} ${SALT_MASTER_NAME} --profile ${SCRIPT_PROFILE_NAME}
+lxc network attach ${SCRIPT_BRIDGE_NAME} ${SALT_MASTER_NAME} ${IFACE}
+lxc config device set ${SALT_MASTER_NAME} ${IFACE} ipv4.address ${IP}.2
+lxc start ${SALT_MASTER_NAME} 
+if lxc image list --format=json | jq -r '.[] | .fingerprint' | grep -q "$OS_FINGERPRINT"; then
+    lxc image alias create ubuntu22.04 "$OS_FINGERPRINT"
 fi
+sudo lxc config device add ${SALT_MASTER_NAME} ${SALT_MASTER_NAME}-script-share disk source=${PWD}/scripts path=/lxd
+sudo lxc exec ${SALT_MASTER_NAME} -- /bin/bash /lxd/${SALT_MASTER_NAME}.sh
+    # save container as image
+lxc stop ${SALT_MASTER_NAME}
+lxc publish ${SALT_MASTER_NAME} --alias ${SALT_MASTER_NAME} 
+lxc delete ${SALT_MASTER_NAME} --force
 
-if ! ${IS_MINION_LOCAL}; then
-    #create salt-minion container
-    lxc init ${OS} ${SALT_MINION_NAME} --profile ${SCRIPT_PROFILE_NAME}
-    lxc network attach ${SCRIPT_BRIDGE_NAME} ${SALT_MINION_NAME} ${IFACE}
-    lxc config device set ${SALT_MINION_NAME} ${IFACE} ipv4.address ${IP}.2
-    lxc start ${SALT_MINION_NAME} 
-    sudo lxc config device add ${SALT_MINION_NAME} ${SALT_MINION_NAME}-script-share disk source=${PWD}/scripts path=/lxd
-    sudo lxc exec ${SALT_MINION_NAME} -- /bin/bash /lxd/${SALT_MINION_NAME}.sh
-    # save container as image
-    lxc stop ${SALT_MINION_NAME}
-    lxc publish ${SALT_MINION_NAME} --alias ${SALT_MINION_NAME} 
-    lxc delete ${SALT_MINION_NAME} --force
-fi
 
 echo "Deleting Image $OS_FINGERPRINT"
 sudo lxc image delete $OS_FINGERPRINT
